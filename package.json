@@ -17,7 +17,11 @@
       "alchemy": "2.0.0-beta.44",
       "effect": "4.0.0-beta.70",
       "@effect/platform-node": "4.0.0-beta.70",
-      "@effect/platform-bun": "4.0.0-beta.70"
+      "@effect/platform-bun": "4.0.0-beta.70",
+      "@effect/sql-d1": "4.0.0-beta.70",
+      "@cloudflare/workers-types": "^4.20260511.1",
+      "drizzle-orm": "^0.45.2",
+      "drizzle-kit": "^0.31.10"
     }
   },
   "type": "module",

@@ -63,5 +63,6 @@ This project vendors external repositories under `@repos/`
 
 When writing Effect code, inspect `@repos/effect/`.
 When writing Alchemy (Infrastructure as Code), inspect `@repos/alchemy/`.
+When writing Drizzle code, inspect `@repos/drizzle/`. We are using the latest Drizzle version with breaking changes.
 
 Use `@repos/` for examples of idiomatic usage, tests, module structure, and API design. Treat it as the source of truth for Effect patterns.

@@ -4,10 +4,12 @@
   "type": "module",
   "scripts": {
     "dev": "alchemy dev",
+    "build": "vite build",
     "deploy": "alchemy deploy",
     "check:types": "tsc --noEmit"
   },
   "dependencies": {
+    "@cloudflare/vite-plugin": "^1.26.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/query-db-collection": "latest",
     "@tanstack/react-db": "latest",
@@ -28,8 +30,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@effect/platform-node": "catalog:",
     "@effect/platform-bun": "catalog:",
+    "@effect/platform-node": "catalog:",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-vite": "latest",
