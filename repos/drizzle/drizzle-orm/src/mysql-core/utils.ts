@@ -1,7 +1,9 @@
 import { is } from '~/entity.ts';
-import { SQL } from '~/index.ts';
+import type { AnyRelations } from '~/relations.ts';
+import { SQL } from '~/sql/sql.ts';
 import { Subquery } from '~/subquery.ts';
 import { Table } from '~/table.ts';
+import type { DrizzleConfig } from '~/utils.ts';
 import { ViewBaseConfig } from '~/view-common.ts';
 import type { Check } from './checks.ts';
 import { CheckBuilder } from './checks.ts';
@@ -87,10 +89,15 @@ export function getViewConfig<
 
 export function convertIndexToString(indexes: IndexForHint[]) {
 	return indexes.map((idx) => {
-		return typeof idx === 'object' ? idx.config.name : idx;
+		return typeof idx === 'object' ? is(idx, IndexBuilder) ? idx.config.name : idx.name! : idx;
 	});
 }
 
 export function toArray<T>(value: T | T[]): T[] {
 	return Array.isArray(value) ? value : [value];
 }
+
+export type DrizzleMySqlConfig<TRelations extends AnyRelations> = Omit<
+	DrizzleConfig<Record<string, never>, TRelations>,
+	'schema'
+>;
