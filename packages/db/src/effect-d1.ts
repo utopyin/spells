@@ -1,3 +1,12 @@
+import {
+  createTableRelationsHelpers,
+  extractTablesRelationalConfig,
+} from "drizzle-orm/_relations";
+import type {
+  ExtractTablesWithRelations,
+  RelationalSchemaConfig,
+  TablesRelationalConfig,
+} from "drizzle-orm/_relations";
 /* oxlint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion, @typescript-eslint/parameter-properties, class-methods-use-this, func-names, max-classes-per-file, no-shadow, prefer-destructuring, unicorn/no-array-reduce, unicorn/no-useless-undefined */
 import type { BatchItem, BatchResponse } from "drizzle-orm/batch";
 import { NoopCache } from "drizzle-orm/cache/core";
@@ -6,15 +15,7 @@ import type { WithCacheConfig } from "drizzle-orm/cache/core/types";
 import { entityKind } from "drizzle-orm/entity";
 import { DefaultLogger, NoopLogger } from "drizzle-orm/logger";
 import type { Logger } from "drizzle-orm/logger";
-import {
-  createTableRelationsHelpers,
-  extractTablesRelationalConfig,
-} from "drizzle-orm/relations";
-import type {
-  ExtractTablesWithRelations,
-  RelationalSchemaConfig,
-  TablesRelationalConfig,
-} from "drizzle-orm/relations";
+import type { AnyRelations, EmptyRelations } from "drizzle-orm/relations";
 import { fillPlaceholders, sql as drizzleSql } from "drizzle-orm/sql";
 import type { Query } from "drizzle-orm/sql";
 import { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core/db";
@@ -58,10 +59,12 @@ export type Effectify<T, Depth extends number = 5> = Depth extends 0
 
 export class EffectD1Database<
   TSchema extends Record<string, unknown> = Record<string, never>,
+  TRelations extends AnyRelations = EmptyRelations,
 > extends BaseSQLiteDatabase<
   "async",
   D1Result,
   TSchema,
+  TRelations,
   ExtractTablesWithRelations<TSchema>
 > {
   static override readonly [entityKind]: string = "EffectD1Database";
@@ -83,8 +86,9 @@ export interface EffectSQLiteD1SessionOptions {
 
 export class EffectSQLiteD1Session<
   TFullSchema extends Record<string, unknown>,
+  TRelations extends AnyRelations,
   TSchema extends TablesRelationalConfig,
-> extends SQLiteSession<"async", D1Result, TFullSchema, TSchema> {
+> extends SQLiteSession<"async", D1Result, TFullSchema, TRelations, TSchema> {
   static override readonly [entityKind]: string = "EffectSQLiteD1Session";
 
   private readonly cache: Cache;
@@ -93,7 +97,8 @@ export class EffectSQLiteD1Session<
   constructor(
     private readonly client: SqlClient,
     dialect: SQLiteAsyncDialect,
-    private readonly schema: RelationalSchemaConfig<TSchema> | undefined,
+    readonly relations: TRelations,
+    readonly schema: RelationalSchemaConfig<TSchema> | undefined,
     options: EffectSQLiteD1SessionOptions = {}
   ) {
     super(dialect);
@@ -105,7 +110,6 @@ export class EffectSQLiteD1Session<
     query: Query,
     fields: SelectedFieldsOrdered | undefined,
     executeMethod: SQLiteExecuteMethod,
-    _isResponseInArrayMode: boolean,
     customResultMapper?: (
       rows: unknown[][],
       mapColumnValue?: (value: unknown) => unknown
@@ -126,6 +130,32 @@ export class EffectSQLiteD1Session<
       fields,
       executeMethod,
       customResultMapper
+    );
+  }
+
+  override prepareRelationalQuery(
+    query: Query,
+    fields: SelectedFieldsOrdered | undefined,
+    executeMethod: SQLiteExecuteMethod,
+    customResultMapper: (
+      rows: Record<string, unknown>[],
+      mapColumnValue?: (value: unknown) => unknown
+    ) => unknown,
+    _config: unknown
+  ): any {
+    return new EffectD1PreparedQuery(
+      this.client,
+      query,
+      this.logger,
+      this.cache,
+      undefined,
+      undefined,
+      fields,
+      executeMethod,
+      customResultMapper as unknown as (
+        rows: unknown[][],
+        mapColumnValue?: (value: unknown) => unknown
+      ) => unknown
     );
   }
 
@@ -156,7 +186,9 @@ export class EffectSQLiteD1Session<
   }
 
   override transaction<T>(
-    transaction: (tx: EffectD1Transaction<TFullSchema, TSchema>) => T,
+    transaction: (
+      tx: EffectD1Transaction<TFullSchema, TRelations, TSchema>
+    ) => T,
     _config?: SQLiteTransactionConfig
   ): any {
     const self = this as any;
@@ -166,11 +198,12 @@ export class EffectSQLiteD1Session<
           "async",
           self.dialect,
           self,
+          self.relations,
           self.schema
         );
 
         return yield* transaction(
-          tx as EffectD1Transaction<TFullSchema, TSchema>
+          tx as EffectD1Transaction<TFullSchema, TRelations, TSchema>
         ) as Effect.Effect<T, SqlError>;
       })
     );
@@ -179,12 +212,21 @@ export class EffectSQLiteD1Session<
 
 export class EffectD1Transaction<
   TFullSchema extends Record<string, unknown>,
+  TRelations extends AnyRelations,
   TSchema extends TablesRelationalConfig,
-> extends SQLiteTransaction<"async", D1Result, TFullSchema, TSchema> {
+> extends SQLiteTransaction<
+  "async",
+  D1Result,
+  TFullSchema,
+  TRelations,
+  TSchema
+> {
   static override readonly [entityKind]: string = "EffectD1Transaction";
 
   override transaction<T>(
-    transaction: (tx: EffectD1Transaction<TFullSchema, TSchema>) => T
+    transaction: (
+      tx: EffectD1Transaction<TFullSchema, TRelations, TSchema>
+    ) => T
   ): any {
     const self = this as any;
     const savepointName = `sp${self.nestedIndex}`;
@@ -192,9 +234,10 @@ export class EffectD1Transaction<
       "async",
       self.dialect,
       self.session,
+      self.relations,
       self.schema,
       self.nestedIndex + 1
-    ) as EffectD1Transaction<TFullSchema, TSchema>;
+    ) as EffectD1Transaction<TFullSchema, TRelations, TSchema>;
 
     return Effect.gen(function* () {
       yield* self.session.run(drizzleSql.raw(`savepoint ${savepointName}`));
@@ -362,11 +405,12 @@ export class EffectD1PreparedQuery<
 
 export const make = <
   TSchema extends Record<string, unknown> = Record<string, never>,
+  TRelations extends AnyRelations = EmptyRelations,
 >(
   client: SqlClient,
-  config: DrizzleConfig<TSchema> = {}
+  config: DrizzleConfig<TSchema, TRelations> = {}
 ) => {
-  const dialect = new SQLiteAsyncDialect({ casing: config.casing });
+  const dialect = new SQLiteAsyncDialect();
   let logger: Logger | undefined;
   if (config.logger === true) {
     logger = new DefaultLogger();
@@ -388,18 +432,25 @@ export const make = <
     };
   }
 
-  const session = new EffectSQLiteD1Session(client, dialect, schema, {
-    cache: config.cache,
-    logger,
-  });
-  const db = new EffectD1Database("async", dialect, session, schema);
+  const relations = config.relations ?? ({} as TRelations);
+  const session = new EffectSQLiteD1Session(
+    client,
+    dialect,
+    relations,
+    schema,
+    {
+      cache: config.cache,
+      logger,
+    }
+  );
+  const db = new EffectD1Database("async", dialect, session, relations, schema);
   (db as any).$client = client;
   (db as any).$cache = config.cache;
   if ((db as any).$cache) {
     (db as any).$cache.invalidate = config.cache?.onMutate;
   }
 
-  return db as unknown as Effectify<EffectD1Database<TSchema>> & {
+  return db as unknown as Effectify<EffectD1Database<TSchema, TRelations>> & {
     readonly $client: SqlClient;
   };
 };

@@ -1,5 +1,11 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "globalPassThroughEnv": [
+    "CLOUDFLARE_ACCOUNT_ID",
+    "CLOUDFLARE_DATABASE_ID",
+    "CLOUDFLARE_D1_TOKEN",
+    "BETTER_AUTH_URL"
+  ],
   "ui": "tui",
   "tasks": {
     "build": {
@@ -10,6 +16,12 @@
     },
     "deploy": {
       "dependsOn": ["^build"],
+      "cache": false
+    },
+    "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
       "cache": false
     },
     "dev": {

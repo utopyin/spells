@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.26.0",
+    "@spells/auth": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/query-db-collection": "latest",
     "@tanstack/react-db": "latest",
@@ -22,6 +23,7 @@
     "@tanstack/react-start": "latest",
     "@tanstack/router-plugin": "^1.132.0",
     "alchemy": "catalog:",
+    "better-auth": "catalog:",
     "effect": "catalog:",
     "lucide-react": "^0.545.0",
     "react": "catalog:",
@@ -30,6 +32,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
     "@effect/platform-bun": "catalog:",
     "@effect/platform-node": "catalog:",
     "@rolldown/plugin-babel": "^0.2.3",
@@ -42,6 +45,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
+    "drizzle-kit": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "wrangler": "^4.70.0"
